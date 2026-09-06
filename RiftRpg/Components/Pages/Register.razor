@@ -1,0 +1,337 @@
+@page "/registrar"
+@rendermode InteractiveServer
+
+@using RiftRpg.ViewModels
+@using RiftRpg.Services
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<PageTitle>FulgorRPG - Criar Conta</PageTitle>
+
+<div class="login-page">
+    <div class="background-glow"></div>
+
+    <div class="login-card">
+        <div class="brand">
+            <div class="brand-icon">🔥</div>
+            <h1 class="brand-title">Fulgor<span>RPG</span></h1>
+            <p class="brand-subtitle">Criar Conta</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="error-banner">@ErrorMessage</div>
+        }
+
+        <EditForm Model="@registerModel" FormName="register-form" OnValidSubmit="@HandleRegister" class="login-form">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="name">Nome</label>
+                <InputText id="name" class="form-input" placeholder="Como podemos te chamar?" @bind-Value="registerModel.Name" />
+                <ValidationMessage For="@(() => registerModel.Name)" class="field-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <InputText id="email" class="form-input" placeholder="seu@email.com" @bind-Value="registerModel.Email" />
+                <ValidationMessage For="@(() => registerModel.Email)" class="field-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <InputText id="password" type="password" class="form-input" placeholder="•••••••••" @bind-Value="registerModel.Password" />
+                <ValidationMessage For="@(() => registerModel.Password)" class="field-error" />
+            </div>
+
+            <div class="form-group">
+                <label for="confirm-password">Confirmar senha</label>
+                <InputText id="confirm-password" type="password" class="form-input" placeholder="•••••••••" @bind-Value="registerModel.ConfirmPassword" />
+                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="field-error" />
+            </div>
+
+            <div class="form-options">
+                <label class="checkbox-label">
+                    <InputCheckbox @bind-Value="registerModel.AcceptTerms" />
+                    <span>Aceito os termos de uso</span>
+                </label>
+            </div>
+            <ValidationMessage For="@(() => registerModel.AcceptTerms)" class="field-error" />
+
+            <button type="submit" class="btn-login" disabled="@IsLoading">
+                @if (IsLoading)
+                {
+                    <span class="spinner"></span>
+                }
+                <span>Criar minha conta</span>
+            </button>
+        </EditForm>
+
+        <div class="divider"><span>ou</span></div>
+
+        <p class="register-text">
+            Já tem conta? <a href="/login" class="register-link">Fazer login</a>
+        </p>
+    </div>
+</div>
+
+<style>
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 50% 0%, #1a1a1f 0%, #0a0a0d 60%, #000000 100%);
+        position: relative;
+        overflow: hidden;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .background-glow {
+        position: absolute;
+        top: -200px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 700px;
+        height: 700px;
+        background: radial-gradient(circle, rgba(214, 90, 27, 0.25) 0%, rgba(214, 90, 27, 0) 70%);
+        filter: blur(40px);
+        pointer-events: none;
+    }
+
+    .login-card {
+        position: relative;
+        width: 100%;
+        max-width: 420px;
+        background: linear-gradient(160deg, #17171c 0%, #0e0e12 100%);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 18px;
+        padding: 40px 36px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+        backdrop-filter: blur(10px);
+    }
+
+    .brand {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .brand-icon {
+        font-size: 40px;
+        margin-bottom: 8px;
+        filter: drop-shadow(0 0 12px rgba(214, 90, 27, 0.6));
+    }
+
+    .brand-title {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: #f2f2f2;
+    }
+
+        .brand-title span {
+            background: linear-gradient(90deg, #e0762c, #d65a1b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+    .brand-subtitle {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: #7a7a82;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+        .form-group label {
+            font-size: 13px;
+            color: #b0b0b8;
+            font-weight: 500;
+        }
+
+    .form-input {
+        background: #0a0a0d;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px 14px;
+        color: #f0f0f0;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        .form-input::placeholder {
+            color: #55555c;
+        }
+
+        .form-input:focus {
+            border-color: #d65a1b;
+            box-shadow: 0 0 0 3px rgba(214, 90, 27, 0.15);
+        }
+
+    .field-error {
+        color: #ff6b6b;
+        font-size: 12px;
+    }
+
+    .form-options {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 13px;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #9a9aa2;
+        cursor: pointer;
+    }
+
+    .error-banner {
+        background: rgba(255, 60, 60, 0.1);
+        border: 1px solid rgba(255, 60, 60, 0.3);
+        color: #ff8080;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+
+    .btn-login {
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: linear-gradient(135deg, #e0762c 0%, #d65a1b 50%, #a8420f 100%);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 13px;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(214, 90, 27, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    }
+
+        .btn-login:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 30px rgba(214, 90, 27, 0.5);
+        }
+
+        .btn-login:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+    .spinner {
+        width: 15px;
+        height: 15px;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+    }
+
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 26px 0 18px;
+        color: #4a4a52;
+        font-size: 12px;
+    }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .divider span {
+            padding: 0 12px;
+        }
+
+    .register-text {
+        text-align: center;
+        margin: 0;
+        font-size: 13px;
+        color: #7a7a82;
+    }
+
+    .register-link {
+        color: #d65a1b;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+        .register-link:hover {
+            text-decoration: underline;
+        }
+</style>
+
+@code {
+    private RegisterModel registerModel = new();
+    private bool IsLoading = false;
+    private string ErrorMessage = string.Empty;
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = string.Empty;
+
+            var (success, message, user) = await UserService.RegisterUserAsync(
+                registerModel.Name,
+                registerModel.Email,
+                registerModel.Password
+            );
+
+            if (!success)
+            {
+                ErrorMessage = message;
+                return;
+            }
+
+            // Redirecionar para login após sucesso
+            NavigationManager.NavigateTo("/login?registered=true");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}
