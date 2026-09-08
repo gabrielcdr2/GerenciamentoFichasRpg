@@ -1,6 +1,11 @@
 ﻿@page "/"
+
 @using System.ComponentModel.DataAnnotations
 @using RiftRpg.ViewModels
+@using RiftRpg.Services
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
 
 <PageTitle>FulgorRPG - Login</PageTitle>
 
@@ -14,7 +19,7 @@
             <p class="brand-subtitle">Gerenciador de Fichas</p>
         </div>
 
-        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" class="login-form">
+        <EditForm Model="@loginModel" FormName="login-form" OnValidSubmit="HandleLogin" class="login-form">
             <DataAnnotationsValidator />
 
             <div class="form-group">
@@ -31,7 +36,7 @@
 
             <div class="form-options">
                 <label class="checkbox-label">
-                    
+                    <InputCheckbox @bind-Value="loginModel.RememberMe" />
                     <span>Lembrar de mim</span>
                 </label>
                 <a href="/recuperar-senha" class="forgot-link">Esqueceu a senha?</a>
@@ -300,7 +305,18 @@
 
 
 @code {
-    private LoginModel loginModel = new();
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager? NavigationManager { get; set; }
+
+    [Inject]
+    private UserService? UserService { get; set; }
+
+    [SupplyParameterFromForm(FormName = "login-form")]
+    private LoginModel loginModel { get; set; } = new();
+
     private bool isLoading = false;
     private string? errorMessage;
 
@@ -311,19 +327,35 @@
 
         try
         {
-            // TODO: substituir pela chamada real ao serviço de autenticação
-            await Task.Delay(1200);
+            var (success, message, user) = await UserService!.LoginAsync(loginModel.Login, loginModel.Password);
 
-            // Exemplo de validação simples — troque pela lógica real
-            if (loginModel.Login == "teste@fulgorrpg.com" && loginModel.Password == "123456")
+            if (!success || user is null)
             {
-                // Navegar para o dashboard de fichas
-                // NavigationManager.NavigateTo("/fichas");
+                errorMessage = message;
+                return;
             }
-            else
+
+            var claims = new List<Claim>
             {
-                errorMessage = "E-mail ou senha inválidos.";
-            }
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Name, user.Name),
+                new(ClaimTypes.Email, user.Email),
+                new("Login", user.Login)
+            };
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = loginModel.RememberMe,
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(loginModel.RememberMe ? 30 : 1)
+                });
+
+            NavigationManager?.NavigateTo("/home");
         }
         finally
         {

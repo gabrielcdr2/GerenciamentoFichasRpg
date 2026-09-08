@@ -9,5 +9,7 @@ namespace RiftRpg.ViewModels
 
         [Required(ErrorMessage = "A senha é obrigatória.")]
         public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
     }
 }

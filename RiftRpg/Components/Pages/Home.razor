@@ -1,7 +1,347 @@
-﻿@page "/Login"
+﻿@page "/home"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using RiftRpg.Models
+@using RiftRpg.Services
+@inject FichaService FichaService
+@inject NavigationManager NavigationManager
 
-<PageTitle>Home</PageTitle>
+<PageTitle>FulgorRPG - Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="home-page">
+    <div class="background-glow"></div>
 
-Welcome to your new app.
+    <div class="home-content">
+        <AuthorizeView>
+            <Authorized>
+                <header class="home-header">
+                    <h1 class="user-name">@context.User.Identity!.Name!.ToUpper()</h1>
+                </header>
+
+                <section class="fichas-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Fichas</h2>
+                        <button class="btn-new-ficha" @onclick="IrParaNovaFicha">
+                            <span class="plus-icon">+</span> Nova ficha
+                        </button>
+                    </div>
+
+                    <div class="section-divider"></div>
+
+                    @if (isLoading)
+                    {
+                        <p class="loading-text">Carregando fichas...</p>
+                    }
+                    else if (fichas is null || fichas.Count == 0)
+                    {
+                        <div class="empty-state">
+                            <p>Você ainda não criou nenhuma ficha.</p>
+                            <button class="btn-new-ficha" @onclick="IrParaNovaFicha">
+                                <span class="plus-icon">+</span> Criar minha primeira ficha
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fichas-grid">
+                            @foreach (var ficha in fichas)
+                            {
+                                <div class="ficha-card" @onclick="() => AbrirFicha(ficha.Id)">
+                                    <div class="ficha-image" style="background-image: url('@(string.IsNullOrEmpty(ficha.FotoUrl) ? "/img/ficha-placeholder.png" : ficha.FotoUrl)')">
+                                        <span class="ficha-level">Nv. @ficha.Nivel</span>
+                                    </div>
+
+                                    <div class="ficha-info">
+                                        <p class="ficha-name">@ficha.NomePersonagem</p>
+
+                                        <div class="stat-bar">
+                                            <div class="stat-bar-label">
+                                                <span>HP</span>
+                                                <span>@ficha.PontosVidaAtual / @ficha.PontosVidaMax</span>
+                                            </div>
+                                            <div class="bar-track">
+                                                <div class="bar-fill hp-fill" style="width:@PercentualVida(ficha)%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="stat-bar">
+                                            <div class="stat-bar-label">
+                                                <span>MP</span>
+                                                <span>@ficha.PontosManaAtual / @ficha.PontosManaMax</span>
+                                            </div>
+                                            <div class="bar-track">
+                                                <div class="bar-fill mp-fill" style="width:@PercentualMana(ficha)%"></div>
+                                            </div>
+                                        </div>
+
+                                        @if (!string.IsNullOrEmpty(ficha.Estilo))
+                                        {
+                                            <span class="ficha-tag">@ficha.Estilo</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+            </Authorized>
+            <NotAuthorized>
+                <p class="loading-text">Você precisa fazer login para ver essa página.</p>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+<style>
+    .home-page {
+        min-height: 100vh;
+        background: radial-gradient(circle at 50% 0%, #1a1a1f 0%, #0a0a0d 60%, #000000 100%);
+        position: relative;
+        overflow-x: hidden;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        padding: 40px 48px 80px;
+        box-sizing: border-box;
+    }
+
+    .background-glow {
+        position: absolute;
+        top: -200px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 900px;
+        height: 700px;
+        background: radial-gradient(circle, rgba(214, 90, 27, 0.18) 0%, rgba(214, 90, 27, 0) 70%);
+        filter: blur(40px);
+        pointer-events: none;
+    }
+
+    .home-content {
+        position: relative;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .home-header {
+        margin-bottom: 40px;
+    }
+
+    .user-name {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #f2f2f2;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .section-title {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+        color: #f0f0f0;
+    }
+
+    .btn-new-ficha {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #e0762c 0%, #d65a1b 50%, #a8420f 100%);
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 8px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(214, 90, 27, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn-new-ficha:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 22px rgba(214, 90, 27, 0.5);
+    }
+
+    .plus-icon {
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .section-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.08);
+        margin-bottom: 28px;
+    }
+
+    .loading-text {
+        color: #8a8a92;
+        font-size: 14px;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        color: #8a8a92;
+        font-size: 14px;
+    }
+
+    .fichas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 200px));
+        gap: 24px;
+    }
+
+    .ficha-card {
+        width: 200px;
+        border-radius: 16px;
+        overflow: hidden;
+        background: linear-gradient(160deg, #17171c 0%, #0e0e12 100%);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow:
+            0 12px 30px rgba(0, 0, 0, 0.6),
+            0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .ficha-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(214, 90, 27, 0.4);
+        box-shadow:
+            0 18px 40px rgba(0, 0, 0, 0.7),
+            0 0 0 1px rgba(214, 90, 27, 0.15) inset;
+    }
+
+    .ficha-image {
+        position: relative;
+        width: 100%;
+        height: 220px;
+        background-size: cover;
+        background-position: center;
+        background-color: #1c1c22;
+    }
+
+    .ficha-image::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(10,10,13,0.9) 100%);
+    }
+
+    .ficha-level {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1;
+        background: rgba(10, 10, 13, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e0762c;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 999px;
+        backdrop-filter: blur(4px);
+    }
+
+    .ficha-info {
+        padding: 12px 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .ficha-name {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #f0f0f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .stat-bar {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .stat-bar-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: #8a8a92;
+        letter-spacing: 0.3px;
+    }
+
+    .bar-track {
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: #0a0a0d;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        transition: width 0.3s ease;
+    }
+
+    .hp-fill {
+        background: linear-gradient(90deg, #ff4d4d, #c62828);
+    }
+
+    .mp-fill {
+        background: linear-gradient(90deg, #4d9dff, #2158c6);
+    }
+
+    .ficha-tag {
+        align-self: flex-start;
+        font-size: 10px;
+        color: #d6a06a;
+        background: rgba(214, 90, 27, 0.12);
+        border: 1px solid rgba(214, 90, 27, 0.25);
+        padding: 2px 8px;
+        border-radius: 999px;
+    }
+</style>
+
+@code {
+    private List<Ficha>? fichas;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // TODO: trocar pelo Id do usuário logado (via claim NameIdentifier)
+        var idUsuario = 0;
+
+        fichas = await FichaService.GetFichasByUsuarioAsync(idUsuario);
+        isLoading = false;
+    }
+
+    private void IrParaNovaFicha()
+    {
+        NavigationManager.NavigateTo("/ficha/nova");
+    }
+
+    private void AbrirFicha(int idFicha)
+    {
+        NavigationManager.NavigateTo($"/ficha/{idFicha}");
+    }
+
+    private double PercentualVida(Ficha ficha)
+        => ficha.PontosVidaMax <= 0 ? 0 : Math.Clamp((double)ficha.PontosVidaAtual / ficha.PontosVidaMax * 100, 0, 100);
+
+    private double PercentualMana(Ficha ficha)
+        => ficha.PontosManaMax <= 0 ? 0 : Math.Clamp((double)ficha.PontosManaAtual / ficha.PontosManaMax * 100, 0, 100);
+}
